@@ -9,13 +9,11 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.action_chains import ActionChains
 
-# === CONFIG ===
+# --- CONFIG & DATABASE (Wahi purana) ---
 USER_PASSWORD = "ArYan.x3" 
 ADMIN_PASSWORD = "MASTER_ADMIN_99" 
 DB_FILE = "approvals.json"
-BANNER_URL = "https://i.ibb.co/vz6mP0X/your-banner.jpg"
 
 def load_db():
     if os.path.exists(DB_FILE):
@@ -29,15 +27,15 @@ def get_permanent_key(name):
     device_id = platform.node() + platform.machine()
     return "KEY_" + hashlib.sha256(f"{name}_{device_id}".encode()).hexdigest()[:12].upper()
 
-# === UI ===
+# --- UI SETUP ---
 st.set_page_config(page_title="ArYan.x3 E2E", layout="centered")
-st.image(BANNER_URL)
 
 if "is_admin" not in st.session_state: st.session_state.is_admin = False
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
 
+# Admin Section
 with st.sidebar:
-    st.header("🛡️ Admin")
+    st.header("🛡️ Admin Panel")
     a_pwd = st.text_input("Admin Pass", type="password")
     if st.button("Admin Login"):
         if a_pwd == ADMIN_PASSWORD:
@@ -51,7 +49,7 @@ if st.session_state.is_admin:
     if st.button("Approve"):
         db[u_k] = u_n
         save_db(db)
-        st.success("Done!")
+        st.success("Approved!")
     st.write(db)
     if st.button("Logout Admin"):
         st.session_state.is_admin = False
@@ -65,21 +63,21 @@ if not st.session_state.logged_in:
             st.session_state.logged_in = True
             st.rerun()
 else:
-    u_name = st.text_input("Your Name")
+    u_name = st.text_input("Enter Your Name")
     if u_name:
         my_key = get_permanent_key(u_name)
         st.info(f"Your Key: {my_key}")
         db = load_db()
         if my_key in db:
             st.success(f"Welcome {u_name}")
-            cookie_data = st.text_area("Cookies")
-            target_id = st.text_input("Target UID (Sirf Number)")
+            cookies = st.text_area("Cookies")
+            target = st.text_input("Target UID")
             hater = st.text_input("Hater Name")
             speed = st.number_input("Speed", min_value=1, value=10)
-            msg_file = st.file_uploader("Upload .txt")
+            file = st.file_uploader("Upload .txt")
 
             if st.button("🚀 START SENDING"):
-                msgs = msg_file.getvalue().decode().splitlines()
+                msgs = file.getvalue().decode().splitlines()
                 
                 options = Options()
                 options.add_argument("--headless=new")
@@ -88,41 +86,36 @@ else:
                 options.binary_location = "/usr/bin/chromium"
                 
                 try:
-                    # Driver setup bina manual path ke
                     driver = webdriver.Chrome(options=options)
-                    driver.set_page_load_timeout(60)
                     
-                    # Login
+                    # --- LOGIN LOGIC ---
                     driver.get("https://m.facebook.com")
-                    for c in cookie_data.split(';'):
+                    for c in cookies.split(';'):
                         if '=' in c:
                             n, v = c.strip().split('=', 1)
                             driver.add_cookie({'name': n.strip(), 'value': v.strip(), 'domain': '.facebook.com'})
                     driver.refresh()
                     time.sleep(5)
 
-                    # E2EE Chat Page
-                    clean_id = target_id.split('/')[-1]
-                    driver.get(f"https://www.facebook.com/messages/e2ee/t/{clean_id}")
-                    st.warning("Encryption Loading... 20s Wait")
+                    # --- NAVIGATION ---
+                    driver.get(f"https://www.facebook.com/messages/e2ee/t/{target}")
+                    st.warning("E2E Loading... 20s")
                     time.sleep(20)
 
+                    # --- SAME SENDING LOGIC AS YOUR SCRIPT ---
                     status_log = st.empty()
                     count = 0
-                    
                     while True:
                         for m in msgs:
                             if not m.strip(): continue
                             full_m = f"{hater} {m}" if hater else m
                             
-                            # === E2EE SENDING LOGIC (FIXED) ===
-                            actions = ActionChains(driver)
-                            # Pehle message type karega
-                            actions.send_keys(full_m)
+                            # Aapki script wala direct element finding logic
+                            # E2EE mein textbox 'role' use karta hai
+                            msg_box = driver.find_element(By.XPATH, "//div[@role='textbox']")
+                            msg_box.send_keys(full_m)
                             time.sleep(1)
-                            # Phir ENTER press karega message bhejne ke liye
-                            actions.send_keys(Keys.ENTER)
-                            actions.perform()
+                            msg_box.send_keys(Keys.ENTER)
                             
                             count += 1
                             status_log.success(f"✅ Sent #{count}: {m}")
